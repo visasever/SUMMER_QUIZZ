@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Авторизація — Адмінпанель ITSTEP</title>
+  <link rel="stylesheet" href="css/admin.css">
+  <script>
+    if (localStorage.getItem('admin_token')) {
+      window.location.href = '/admin.html';
+    }
+  </script>
+</head>
+<body style="display: flex; align-items: center; justify-content: center; min-height: 100vh;">
+
+  <div class="auth-container" style="margin: 0; width: 100%; max-width: 440px;">
+    <div style="text-align: center; margin-bottom: 24px;">
+      <a href="/" style="text-decoration: none; color: inherit;" title="На головну сторінку">
+        <img src="assets/logo.jpg" alt="ITSTEP" style="height: 50px; border-radius: 8px; margin-bottom: 12px;">
+        <h2 style="color: #38bdf8; font-size: 1.5rem; font-weight: 700;">Вхід в Адмінпанель</h2>
+      </a>
+      <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 6px;">Введіть пароль адміністратора для доступу</p>
+    </div>
+
+    <form id="admin-login-form">
+      <div class="form-field">
+        <label for="admin-password">Пароль адміністратора</label>
+        <input type="password" id="admin-password" placeholder="Пароль" required autofocus>
+      </div>
+      <div id="login-error" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 16px; display: none; text-align: center;"></div>
+      <button type="submit" class="btn-admin" style="width: 100%; padding: 12px; font-size: 1rem;">Увійти</button>
+    </form>
+
+    <div style="text-align: center; margin-top: 20px;">
+      <a href="/" style="color: #64748b; text-decoration: none; font-size: 0.85rem;">← Повернутися на головну сторінку</a>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('admin-login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const pwd = document.getElementById('admin-password').value;
+      const errorEl = document.getElementById('login-error');
+      errorEl.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pwd })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          localStorage.setItem('admin_token', data.token);
+          window.location.href = '/admin.html';
+        } else {
+          errorEl.textContent = data.error || 'Невірний пароль';
+          errorEl.style.display = 'block';
+        }
+      } catch (err) {
+        errorEl.textContent = 'Помилка з\'єднання із сервером';
+        errorEl.style.display = 'block';
+      }
+    });
+  </script>
+
+</body>
+</html>

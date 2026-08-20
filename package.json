@@ -1,0 +1,19 @@
+{
+  "name": "quizz-summer-itstep",
+  "version": "1.0.0",
+  "description": "Інтерактивний квіз: «Мої літні канікули — це баг чи фіча?»",
+  "main": "server.py",
+  "scripts": {
+    "start": "python3 server.py",
+    "dev": "python3 server.py"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "better-sqlite3": "^11.7.0",
+    "multer": "^1.4.5-lts.1",
+    "pdf-lib": "^1.17.1"
+  },
+  "engines": {
+    "node": "20.x"
+  }
+}

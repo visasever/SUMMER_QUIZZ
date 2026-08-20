@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Мої літні канікули — це баг чи фіча? | Академія ITSTEP</title>
+  <meta name="description" content="Інтерактивний IT-квіз для дітей 7-14 років та їхніх батьків від Академії ITSTEP. Пройдіть тест, дізнайтесь IT-профіль дитини та вигравайте геймерські призи!">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/quiz-data.js" defer></script>
+  <script src="js/cert-generator.js" defer></script>
+  <script src="js/app.js" defer></script>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <a href="/" class="logo-brand">
+        <img src="assets/logo.jpg" alt="Академія ITSTEP Логотип" class="logo-img">
+        <div class="brand-info">
+          <span class="brand-title">АКАДЕМІЯ ITSTEP</span>
+          <span class="brand-branch dynamic-branch-name">Cloud east</span>
+        </div>
+      </a>
+      <div class="header-contacts">
+        <a href="tel:+380962311331" class="contact-item dynamic-phone">📞 <span>+380 96 23 11 331</span></a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Wrapper -->
+  <main class="main-wrapper">
+
+    <!-- Screen 1: Intro Video & Title -->
+    <section id="screen-1" class="screen-card">
+      <h1 class="title-primary">
+        Інтерактивний квіз: <br>
+        <span class="title-gradient">«Мої літні канікули — це баг чи фіча?»</span>
+      </h1>
+      <p class="subtitle">
+        Просидів усі канікули в гаджетах чи збудував цілий світ у Minecraft? Давай перевіримо, як минуло твоє літо! Відповідай на 10 простих запитань та дізнайся, що це було — марний баг чи твоя супер-фіча для майбутнього в IT!
+      </p>
+
+      <!-- Video Player Frame -->
+      <div class="video-box">
+        <div class="video-placeholder">
+          <div class="play-icon">▶</div>
+          <h3>Презентація квесту від Академії ITSTEP</h3>
+          <p style="font-size:0.85rem; margin-top:6px;">(Відео з поясненням ідеї квесту для дітей та батьків)</p>
+        </div>
+      </div>
+
+      <button id="start-registration-btn" class="btn-primary">
+        🚀 Розпочати квест та взяти участь у розіграші
+      </button>
+    </section>
+
+    <!-- Screen 2: Registration Form -->
+    <section id="screen-2" class="screen-card hidden">
+      <h2 class="title-primary" style="font-size: 1.8rem;">
+        Реєстрація у квізі <span class="title-gradient">ITSTEP</span>
+      </h2>
+      <p class="subtitle">
+        Для того, щоб отримати подарунки від ITSTEP та зареєструватись на розіграш головних призів (геймерської гарнітури, клавіатури та миші), заповніть, будь ласка, форму:
+      </p>
+
+      <form id="registration-form">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="child_name">1. Твоє ім’я? (дитини)</label>
+            <input type="text" id="child_name" class="form-input" placeholder="Наприклад: Максим" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="child_age">2. Скільки тобі років?</label>
+            <input type="number" id="child_age" class="form-input" min="6" max="18" placeholder="Вік (7-14 років)" required>
+          </div>
+
+          <div class="form-group full-width">
+            <label class="form-label" for="city">3. В якому місті (або неподалік якого міста) ти живеш?</label>
+            <select id="city" class="form-select" required>
+              <option value="" disabled selected>Оберіть місто зі списку</option>
+              <option value="Дрогобич">Дрогобич</option>
+              <option value="Ковель">Ковель</option>
+              <option value="Нововолинськ">Нововолинськ</option>
+              <option value="Бердичів">Бердичів</option>
+              <option value="Калуш">Калуш</option>
+              <option value="Стрий">Стрий</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="parent_name">4. Ім’я одного із твоїх батьків</label>
+            <input type="text" id="parent_name" class="form-input" placeholder="Олена чи Олексій" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="parent_phone">5. Номер телефону батьків</label>
+            <input type="tel" id="parent_phone" class="form-input" placeholder="+380..." required>
+          </div>
+
+          <div class="form-group full-width">
+            <label class="form-label" for="parent_email">6. Адреса електронної пошти батьків</label>
+            <input type="email" id="parent_email" class="form-input" placeholder="parent@gmail.com" required>
+          </div>
+        </div>
+
+        <p style="font-size: 0.8rem; color: #94a3b8; font-style: italic; opacity: 0.85; margin: 20px 0; line-height: 1.5; text-align: center;">
+          Заповнивши цю форму ви надаєте згоду Академії ITSTEP на обробку ваших персональних даних. Академія ITSTEP гарантує, що ваші персональні дані будуть використані виключно в межах оголошеної акції та не будуть передані третім особам.
+        </p>
+
+        <button type="submit" class="btn-primary">
+          📝 Зареєструватись та перейти до тесту
+        </button>
+      </form>
+    </section>
+
+    <!-- Screen 3: Welcome Greeting -->
+    <section id="screen-3" class="screen-card hidden">
+      <div style="text-align: center; padding: 20px 0;">
+        <div style="font-size: 3.5rem; margin-bottom: 16px;">🎉</div>
+        <h2 class="title-primary">
+          Вітаю, <span id="screen3-child-name" class="title-gradient">Учаснику</span>!
+        </h2>
+        <p class="subtitle" style="font-size: 1.2rem; color: #fff;">
+          Тебе зареєстровано в квізі <br><strong>“Мої літні канікули — це баг чи фіча?”</strong>.
+        </p>
+        <p class="subtitle">
+          А тепер — до справ! Бажаємо тобі перемоги!
+        </p>
+        <button id="start-quiz-btn" class="btn-primary" style="max-width: 400px; margin: 0 auto;">
+          ⚡ Розпочати тест (10 запитань)
+        </button>
+      </div>
+    </section>
+
+    <!-- Screen 4: Quiz Questions Engine -->
+    <section id="screen-4" class="screen-card hidden">
+      <div class="quiz-header">
+        <span id="quiz-step-indicator" class="quiz-step-count">Запитання 1 з 10</span>
+        <span style="font-size: 0.85rem; color: var(--text-muted);">Квіз ITSTEP</span>
+      </div>
+
+      <div class="progress-bar-container">
+        <div id="quiz-progress-fill" class="progress-fill"></div>
+      </div>
+
+      <h2 id="quiz-question-title" class="quiz-question-text">
+        Яка твоя головна перемога цього літа?
+      </h2>
+
+      <div id="quiz-options-container" class="quiz-options-list">
+        <!-- Dynamic options rendered via JS -->
+      </div>
+    </section>
+
+    <!-- Screen 5: Final Results & Rewards -->
+    <section id="screen-5" class="screen-card hidden">
+      <div class="result-badge-card">
+        <div id="result-icon" class="result-icon">💻🎮</div>
+        <span id="result-badge" class="result-badge">Профіль: Майбутній Developer</span>
+        <h2 id="result-title" class="title-primary" style="margin-bottom: 0;">Твоє літо — це 100% ФІЧА!</h2>
+      </div>
+
+      <div class="parent-explanation-box">
+        <p id="result-parent-text">
+          Для батьків: Дитина не просто «сиділа в комп'ютері» — у неї чудово розвинена алгоритмічна логіка, інтерес до створення продуктів та системне мислення. Вона готова до вивчення кодингу!
+        </p>
+      </div>
+
+      <h3 style="text-align: center; font-size: 1.4rem; margin-bottom: 20px;" class="title-gradient">
+        Дізналися свій IT-профіль? Забирайте подарунки!
+      </h3>
+
+      <!-- Email Delivery Notice -->
+      <div id="email-delivery-box" class="hidden" style="text-align: center; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+        <div style="font-size: 2.8rem; margin-bottom: 8px;">📩</div>
+        <h4 style="color: var(--accent-cyan); font-size: 1.25rem; font-weight: 700; margin-bottom: 8px;">
+          Сертифікат та IT-гайд надіслано!
+        </h4>
+        <p style="font-size: 0.95rem; color: #cbd5e0; line-height: 1.6; max-width: 600px; margin: 0 auto 16px;">
+          Ми надіслали сертифікат учасника та IT-гайд для батьків на вказану електронну пошту: <strong id="user-email-display" style="color: #ffffff; text-decoration: underline;"></strong>. <br>
+          <span style="font-size: 0.85rem; color: #94a3b8;">Перевірте, будь ласка, вхідні повідомлення (та папку «Спам»).</span>
+        </p>
+        <button id="show-manual-download-btn" class="btn-secondary" style="font-size: 0.85rem; padding: 10px 18px; width: auto;">
+          Не отримали лист? Завантажити матеріали вручну
+        </button>
+      </div>
+
+      <!-- Direct Downloads Grid -->
+      <div id="direct-downloads-box" class="downloads-grid">
+        <button id="download-cert-btn" class="btn-primary">
+          📜 Завантажити сертифікат
+        </button>
+        <button id="download-guide-btn" class="btn-secondary">
+          📘 Завантажити IT-гайд для батьків
+        </button>
+      </div>
+
+      <!-- Raffle Ticket Box -->
+      <div class="ticket-box">
+        <h4 style="color: #cbd5e0; font-size: 1rem;">Вас зареєстровано на розіграш головних призів:</h4>
+        <p style="color: var(--accent-gold); font-size: 0.95rem; font-weight: 700; margin-top: 4px;">
+          1. Геймерська гарнітура | 2. Геймерська миша | 3. Геймерська клавіатура
+        </p>
+        <div style="margin-top: 14px; font-size: 0.9rem; color: #a0aec0;">Ваш унікальний номер учасника:</div>
+        <div id="result-ticket-number" class="ticket-number">ITS-849201</div>
+        <p style="font-size: 0.85rem; color: #cbd5e0; margin-top: 8px;">
+          Дякуємо за участь в квізі і бажаємо виграти головний приз! <br>
+          <strong style="color: var(--accent-cyan);">Розіграш призів відбудеться 9 вересня.</strong>
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <div class="footer-container">
+      <div class="footer-branch-info">
+        <strong>Академія ITSTEP — <span class="dynamic-branch-name">Cloud east</span></strong>
+        <div style="font-size: 0.85rem; margin-top: 4px;" class="dynamic-address">UKRAINE</div>
+      </div>
+      <div>
+        📞 Телефон: <a href="tel:+380962311331" class="dynamic-phone" style="color: var(--accent-cyan); text-decoration: none;">+380 96 23 11 331</a> <br>
+        ✉️ Email: <a href="mailto:cloud_east@itstep.org" class="dynamic-email" style="color: var(--accent-cyan); text-decoration: none;">cloud_east@itstep.org</a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

@@ -1,0 +1,10 @@
+# Local SQLite database & uploads
+db.sqlite3
+uploads/*
+!uploads/.gitkeep
+
+# Node & Python caches
+node_modules/
+__pycache__/
+*.pyc
+.env
