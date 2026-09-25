@@ -647,7 +647,7 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                           <p>Дякуємо за участь у проекті <strong>«Іспит Кіберзахисника»</strong>!</p>
                           <p>Учасник: <strong>{child_name}</strong><br>
                           Визначений IT-профіль: <strong>{result_profile}</strong><br>
-                          Унікальний номер учасника розіграшу: <strong>{ticket_number}</strong></p>
+                          Унікальний номер учасника проекту: <strong>{ticket_number}</strong></p>
                           <p>📎 <strong>Ваші вкладені матеріали:</strong><br>
                           1. Офіційний персональний сертифікат учасника (PNG)<br>
                           2. Посібник Кіберзахисника (PDF)</p>
