@@ -633,25 +633,25 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                         })
                     if guide_b64:
                         attachments.append({
-                            "name": "IT_Guide_For_Parents.pdf",
+                            "name": "Posibnyk_Kiberzakhysnyka.pdf",
                             "content": guide_b64
                         })
 
-                    subject = f"Сертифікат та IT-гайд для {child_name} | Академія ITSTEP"
+                    subject = f"Сертифікат та Посібник Кіберзахисника для {child_name} | Академія ITSTEP"
                     html_content = f"""
                     <html>
                       <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
-                        <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
-                          <h2 style="color: #0284c7;">Академія ITSTEP</h2>
+                        <div style="max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e0e0e0; border-radius: 8px;">
+                          <h2 style="color: #0284c7; margin-top: 0;">Академія ITSTEP</h2>
                           <p>Вітаємо!</p>
-                          <p>Дякуємо за участь у квізі <strong>«Мої літні канікули — це баг чи фіча?»</strong>.</p>
+                          <p>Дякуємо за участь у проекті <strong>«Іспит Кіберзахисника»</strong>!</p>
                           <p>Учасник: <strong>{child_name}</strong><br>
                           Визначений IT-профіль: <strong>{result_profile}</strong><br>
                           Унікальний номер учасника розіграшу: <strong>{ticket_number}</strong></p>
                           <p>📎 <strong>Ваші вкладені матеріали:</strong><br>
                           1. Офіційний персональний сертифікат учасника (PNG)<br>
-                          2. IT-гайд для батьків (PDF)</p>
-                          <p style="font-size: 0.9em; color: #666; margin-top: 20px;">З повагою,<br>Команда Академії ITSTEP</p>
+                          2. Посібник Кіберзахисника (PDF)</p>
+                          <p style="font-size: 0.9em; color: #666; margin-top: 24px;">З повагою,<br>Команда Академії ITSTEP</p>
                         </div>
                       </body>
                     </html>
