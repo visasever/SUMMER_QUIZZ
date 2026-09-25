@@ -116,7 +116,7 @@ async function buildCertificateCanvas(childName, branchName, ticketNumber) {
 
     ctx.font = 'bold 38px "Inter", sans-serif';
     ctx.fillStyle = '#ffb703';
-    ctx.fillText('«Мої літні канікули — це баг чи фіча?»', 800, 655);
+    ctx.fillText('«Іспит Кібер-Захисника»', 800, 655);
 
     ctx.font = '500 24px "Inter", sans-serif';
     ctx.fillStyle = '#cbd5e0';
