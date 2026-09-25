@@ -112,7 +112,7 @@ async function buildCertificateCanvas(childName, branchName, ticketNumber) {
     // Achievement text
     ctx.font = '500 28px "Inter", sans-serif';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText('успішно пройшов(ла) інтерактивний IT-квіст', 800, 595);
+    ctx.fillText('успішно пройшов(ла) інтерактивний ІТ-квіз', 800, 595);
 
     ctx.font = 'bold 38px "Inter", sans-serif';
     ctx.fillStyle = '#ffb703';
@@ -137,7 +137,7 @@ async function buildCertificateCanvas(childName, branchName, ticketNumber) {
 
     ctx.font = 'bold 22px "Inter", sans-serif';
     ctx.fillStyle = '#ffb703';
-    ctx.fillText('УНІКАЛЬНИЙ НОМЕР УЧАСНИКА РОЗІГРАШУ ПРИЗІВ:', 800, 800);
+    ctx.fillText('УНІКАЛЬНИЙ НОМЕР УЧАСНИКА ПРОЕКТУ:', 800, 800);
 
     ctx.font = 'bold 36px "Courier New", monospace';
     ctx.fillStyle = '#ffffff';
