@@ -228,7 +228,7 @@ function renderQuestion() {
     card.className = 'quiz-option-card';
     card.innerHTML = `
       <span class="option-text">${opt.text}</span>
-      <span class="option-tag">${opt.tag}</span>
+      ${opt.tag ? `<span class="option-tag">${opt.tag}</span>` : ''}
     `;
     card.addEventListener('click', () => {
       userAnswers.push(opt.code);
