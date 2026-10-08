@@ -334,13 +334,10 @@ def get_settings():
     except Exception as e:
         print("Error reading settings DB:", e)
 
-    # Якщо посилання на відео відсутнє в адмінпанелі, воно береться з environment variable VIDEO_URL
+    # Якщо посилання на відео відсутнє в адмінпанелі, воно береться лише зі змінної оточення VIDEO_URL
     if not settings.get('youtube_url') or not settings['youtube_url'].strip():
         env_video = (os.environ.get('VIDEO_URL') or os.environ.get('YOUTUBE_URL') or '').strip()
-        if env_video:
-            settings['youtube_url'] = env_video
-        else:
-            settings['youtube_url'] = 'https://youtube.com/shorts/2Uz2AQn4Z-U?feature=share'
+        settings['youtube_url'] = env_video
 
     return settings
 

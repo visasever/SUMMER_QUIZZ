@@ -93,7 +93,7 @@ function renderBranchInfo() {
     }
   });
 
-  const ytUrl = currentBranchSettings.youtube_url || localStorage.getItem('youtube_url');
+  const ytUrl = currentBranchSettings.youtube_url;
   const videoBox = document.querySelector('.video-box');
   if (videoBox && ytUrl) {
     const embedUrl = getYouTubeEmbedUrl(ytUrl);
