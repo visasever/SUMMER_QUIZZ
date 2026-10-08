@@ -280,7 +280,6 @@ def init_db():
     
     defaults = {
         'branch_name': 'Cloud east',
-        'youtube_url': 'https://youtube.com/shorts/2Uz2AQn4Z-U?feature=share',
         'phone': '+380 96 23 11 331',
         'email': 'cloud_east@itstep.org',
         'address': 'UKRAINE',
@@ -299,7 +298,7 @@ SETTINGS_FILE = os.path.join(os.path.dirname(__file__), 'settings.json')
 
 DEFAULT_SETTINGS = {
     'branch_name': 'Cloud east',
-    'youtube_url': 'https://youtube.com/shorts/2Uz2AQn4Z-U?feature=share',
+    'youtube_url': '',
     'phone': '+380 96 23 11 331',
     'email': 'cloud_east@itstep.org',
     'address': 'UKRAINE',
@@ -318,8 +317,8 @@ def get_settings():
             with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
                 saved = json.load(f)
                 for k, v in saved.items():
-                    if v:
-                        settings[k] = str(v)
+                    if v and str(v).strip():
+                        settings[k] = str(v).strip()
         except Exception as e:
             print("Error reading settings.json:", e)
 
@@ -330,10 +329,18 @@ def get_settings():
         rows = c.fetchall()
         conn.close()
         for k, v in rows:
-            if v:
-                settings[k] = v
+            if v and str(v).strip():
+                settings[k] = str(v).strip()
     except Exception as e:
         print("Error reading settings DB:", e)
+
+    # Якщо посилання на відео відсутнє в адмінпанелі, воно береться з environment variable VIDEO_URL
+    if not settings.get('youtube_url') or not settings['youtube_url'].strip():
+        env_video = (os.environ.get('VIDEO_URL') or os.environ.get('YOUTUBE_URL') or '').strip()
+        if env_video:
+            settings['youtube_url'] = env_video
+        else:
+            settings['youtube_url'] = 'https://youtube.com/shorts/2Uz2AQn4Z-U?feature=share'
 
     return settings
 
