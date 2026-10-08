@@ -278,6 +278,9 @@ def init_db():
         )
     ''')
     
+    # Remove legacy default youtube_url if present in DB
+    c.execute("DELETE FROM settings WHERE key = 'youtube_url' AND value = 'https://youtube.com/shorts/2Uz2AQn4Z-U?feature=share'")
+
     defaults = {
         'branch_name': 'Cloud east',
         'phone': '+380 96 23 11 331',
@@ -334,8 +337,9 @@ def get_settings():
     except Exception as e:
         print("Error reading settings DB:", e)
 
-    # Якщо посилання на відео відсутнє в адмінпанелі, воно береться лише зі змінної оточення VIDEO_URL
-    if not settings.get('youtube_url') or not settings['youtube_url'].strip():
+    # Якщо посилання на відео відсутнє в адмінпанелі (або дорівнює застарілому дефолтному), воно береться лише зі змінної оточення VIDEO_URL
+    yt_val = settings.get('youtube_url', '').strip()
+    if not yt_val or yt_val == 'https://youtube.com/shorts/2Uz2AQn4Z-U?feature=share':
         env_video = (os.environ.get('VIDEO_URL') or os.environ.get('YOUTUBE_URL') or '').strip()
         settings['youtube_url'] = env_video
 

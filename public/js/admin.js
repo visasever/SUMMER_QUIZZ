@@ -31,9 +31,6 @@ function setupAdminEvents() {
         smtp_pass: document.getElementById('set_smtp_pass').value
       };
 
-      if (payload.youtube_url) {
-        localStorage.setItem('youtube_url', payload.youtube_url);
-      }
       try {
         const res = await fetch('/api/admin/settings', {
           method: 'POST',
@@ -187,7 +184,7 @@ async function loadSettings() {
     if (res.ok) {
       const data = await res.json();
       document.getElementById('set_branch_name').value = data.branch_name || '';
-      document.getElementById('set_youtube_url').value = data.youtube_url || localStorage.getItem('youtube_url') || '';
+      document.getElementById('set_youtube_url').value = data.youtube_url || '';
       document.getElementById('set_phone').value = data.phone || '';
       document.getElementById('set_email').value = data.email || '';
       document.getElementById('set_address').value = data.address || '';
