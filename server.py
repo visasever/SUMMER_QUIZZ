@@ -23,6 +23,29 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "zVjp5vlB3ojS0uT")
 
 DELETED_LEADS_FILE = os.path.join(os.path.dirname(__file__), 'deleted_leads.json')
 
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+
+HAS_PSYCOPG2 = False
+if DATABASE_URL:
+    try:
+        import psycopg2
+        HAS_PSYCOPG2 = True
+    except ImportError:
+        HAS_PSYCOPG2 = False
+        print("WARNING: DATABASE_URL is set, but psycopg2 is not installed. Falling back to SQLite.")
+
+IS_POSTGRES = bool(DATABASE_URL and HAS_PSYCOPG2)
+
+def get_db_conn():
+    if IS_POSTGRES:
+        import psycopg2
+        pg_url = DATABASE_URL
+        if pg_url.startswith("postgres://"):
+            pg_url = pg_url.replace("postgres://", "postgresql://", 1)
+        return psycopg2.connect(pg_url)
+    else:
+        return sqlite3.connect(DB_FILE)
+
 def send_smtp_email_ipv4(smtp_host, smtp_port, smtp_user, smtp_pass, recipient, subject, html_content, attachments=None):
     import socket
     import smtplib
@@ -228,18 +251,7 @@ def save_deleted_lead_record(lead_id, ticket_number=None):
 
     purge_deleted_leads_from_db(records)
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
-IS_POSTGRES = bool(DATABASE_URL)
 
-def get_db_conn():
-    if IS_POSTGRES:
-        import psycopg2
-        pg_url = DATABASE_URL
-        if pg_url.startswith("postgres://"):
-            pg_url = pg_url.replace("postgres://", "postgresql://", 1)
-        return psycopg2.connect(pg_url)
-    else:
-        return sqlite3.connect(DB_FILE)
 
 def purge_deleted_leads_from_db(records=None):
     if records is None:

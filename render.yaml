@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: summer-quizz
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
