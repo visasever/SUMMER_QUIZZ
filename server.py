@@ -620,7 +620,7 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
 
                 if email:
                     current_s = get_settings()
-                    email_api_key = (data.get('email_api_key') or os.environ.get('EMAIL_API_KEY') or current_s.get('email_api_key') or '').strip()
+                    email_api_key = (data.get('email_api_key') or os.environ.get('EMAIL_API_KEY') or os.environ.get('BREVO_API_KEY') or current_s.get('email_api_key') or '').strip()
                     smtp_host = (os.environ.get('SMTP_HOST') or current_s.get('smtp_host') or '').strip()
                     smtp_port_raw = str(os.environ.get('SMTP_PORT') or current_s.get('smtp_port') or '587').strip()
                     smtp_port = int(smtp_port_raw) if smtp_port_raw.isdigit() else 587
@@ -702,7 +702,7 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
             try:
                 data = json.loads(body.decode('utf-8'))
                 current_s = get_settings()
-                email_api_key = (data.get('email_api_key') or os.environ.get('EMAIL_API_KEY') or current_s.get('email_api_key') or '').strip()
+                email_api_key = (data.get('email_api_key') or os.environ.get('EMAIL_API_KEY') or os.environ.get('BREVO_API_KEY') or current_s.get('email_api_key') or '').strip()
                 smtp_host = (data.get('smtp_host') or os.environ.get('SMTP_HOST') or current_s.get('smtp_host') or '').strip()
                 smtp_port_raw = str(data.get('smtp_port') or os.environ.get('SMTP_PORT') or current_s.get('smtp_port') or '587').strip()
                 smtp_port = int(smtp_port_raw) if smtp_port_raw.isdigit() else 587
