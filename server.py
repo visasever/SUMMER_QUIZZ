@@ -163,9 +163,12 @@ def get_guide_pdf_base64():
     import base64
     # 1. Check if custom parent_guide was uploaded via Admin Panel
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_conn()
         c = conn.cursor()
-        c.execute('SELECT filename FROM files WHERE file_type = ?', ('parent_guide',))
+        if IS_POSTGRES:
+            c.execute('SELECT filename FROM files WHERE file_type = %s', ('parent_guide',))
+        else:
+            c.execute('SELECT filename FROM files WHERE file_type = ?', ('parent_guide',))
         row = c.fetchone()
         conn.close()
         if row and row[0]:
@@ -397,6 +400,11 @@ def get_settings():
     if not yt_val or yt_val == 'https://youtube.com/shorts/2Uz2AQn4Z-U?feature=share':
         env_video = (os.environ.get('VIDEO_URL') or os.environ.get('YOUTUBE_URL') or '').strip()
         settings['youtube_url'] = env_video
+
+    # BREVO_API_KEY: беремо переважно зі змінної оточення BREVO_API_KEY або EMAIL_API_KEY
+    env_brevo = (os.environ.get('BREVO_API_KEY') or os.environ.get('EMAIL_API_KEY') or '').strip()
+    if env_brevo or not settings.get('email_api_key', '').strip():
+        settings['email_api_key'] = env_brevo or settings.get('email_api_key', '').strip()
 
     return settings
 
@@ -700,7 +708,7 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
 
                 if email:
                     current_s = get_settings()
-                    email_api_key = (data.get('email_api_key') or os.environ.get('EMAIL_API_KEY') or os.environ.get('BREVO_API_KEY') or current_s.get('email_api_key') or '').strip()
+                    email_api_key = (os.environ.get('BREVO_API_KEY') or os.environ.get('EMAIL_API_KEY') or data.get('email_api_key') or current_s.get('email_api_key') or '').strip()
                     smtp_host = (os.environ.get('SMTP_HOST') or current_s.get('smtp_host') or '').strip()
                     smtp_port_raw = str(os.environ.get('SMTP_PORT') or current_s.get('smtp_port') or '587').strip()
                     smtp_port = int(smtp_port_raw) if smtp_port_raw.isdigit() else 587
@@ -782,7 +790,7 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
             try:
                 data = json.loads(body.decode('utf-8'))
                 current_s = get_settings()
-                email_api_key = (data.get('email_api_key') or os.environ.get('EMAIL_API_KEY') or os.environ.get('BREVO_API_KEY') or current_s.get('email_api_key') or '').strip()
+                email_api_key = (os.environ.get('BREVO_API_KEY') or os.environ.get('EMAIL_API_KEY') or data.get('email_api_key') or current_s.get('email_api_key') or '').strip()
                 smtp_host = (data.get('smtp_host') or os.environ.get('SMTP_HOST') or current_s.get('smtp_host') or '').strip()
                 smtp_port_raw = str(data.get('smtp_port') or os.environ.get('SMTP_PORT') or current_s.get('smtp_port') or '587').strip()
                 smtp_port = int(smtp_port_raw) if smtp_port_raw.isdigit() else 587
