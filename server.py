@@ -225,6 +225,19 @@ def save_deleted_lead_record(lead_id, ticket_number=None):
 
     purge_deleted_leads_from_db(records)
 
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+IS_POSTGRES = bool(DATABASE_URL)
+
+def get_db_conn():
+    if IS_POSTGRES:
+        import psycopg2
+        pg_url = DATABASE_URL
+        if pg_url.startswith("postgres://"):
+            pg_url = pg_url.replace("postgres://", "postgresql://", 1)
+        return psycopg2.connect(pg_url)
+    else:
+        return sqlite3.connect(DB_FILE)
+
 def purge_deleted_leads_from_db(records=None):
     if records is None:
         records = get_deleted_records()
@@ -235,63 +248,105 @@ def purge_deleted_leads_from_db(records=None):
         return
 
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_conn()
         c = conn.cursor()
         for lid in ids:
-            c.execute('DELETE FROM leads WHERE id = ?', (lid,))
+            if IS_POSTGRES:
+                c.execute('DELETE FROM leads WHERE id = %s', (lid,))
+            else:
+                c.execute('DELETE FROM leads WHERE id = ?', (lid,))
         for tnum in tickets:
-            c.execute('DELETE FROM leads WHERE ticket_number = ?', (tnum,))
+            if IS_POSTGRES:
+                c.execute('DELETE FROM leads WHERE ticket_number = %s', (tnum,))
+            else:
+                c.execute('DELETE FROM leads WHERE ticket_number = ?', (tnum,))
         conn.commit()
         conn.close()
     except Exception as e:
         print("Error purging deleted leads from DB:", e)
 
 def init_db():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS settings (
-            key TEXT PRIMARY KEY,
-            value TEXT
-        )
-    ''')
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS leads (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            created_at TEXT,
-            child_name TEXT,
-            child_age INTEGER,
-            city TEXT,
-            parent_name TEXT,
-            parent_phone TEXT,
-            parent_email TEXT,
-            ticket_number TEXT UNIQUE,
-            result_profile TEXT
-        )
-    ''')
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS files (
-            file_type TEXT PRIMARY KEY,
-            filename TEXT,
-            original_name TEXT,
-            uploaded_at TEXT
-        )
-    ''')
-    
-    # Remove legacy default youtube_url if present in DB
-    c.execute("DELETE FROM settings WHERE key = 'youtube_url' AND value = 'https://youtube.com/shorts/2Uz2AQn4Z-U?feature=share'")
-
-    defaults = {
-        'branch_name': 'Cloud east',
-        'phone': '+380 96 23 11 331',
-        'email': 'cloud_east@itstep.org',
-        'address': 'UKRAINE',
-        'telegram': '@StepCloudEast'
-    }
-    for k, v in defaults.items():
-        c.execute('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', (k, v))
-    conn.commit()
-    conn.close()
+    try:
+        conn = get_db_conn()
+        c = conn.cursor()
+        if IS_POSTGRES:
+            c.execute('''
+                CREATE TABLE IF NOT EXISTS settings (
+                    key VARCHAR(255) PRIMARY KEY,
+                    value TEXT
+                );
+                CREATE TABLE IF NOT EXISTS leads (
+                    id SERIAL PRIMARY KEY,
+                    created_at TEXT,
+                    child_name TEXT,
+                    child_age INTEGER,
+                    city TEXT,
+                    parent_name TEXT,
+                    parent_phone TEXT,
+                    parent_email TEXT,
+                    ticket_number VARCHAR(255) UNIQUE,
+                    result_profile TEXT
+                );
+                CREATE TABLE IF NOT EXISTS files (
+                    file_type VARCHAR(255) PRIMARY KEY,
+                    filename TEXT,
+                    original_name TEXT,
+                    uploaded_at TEXT
+                );
+            ''')
+            c.execute("DELETE FROM settings WHERE key = 'youtube_url' AND value = 'https://youtube.com/shorts/2Uz2AQn4Z-U?feature=share'")
+            defaults = {
+                'branch_name': 'Cloud east',
+                'phone': '+380 96 23 11 331',
+                'email': 'cloud_east@itstep.org',
+                'address': 'UKRAINE',
+                'telegram': '@StepCloudEast'
+            }
+            for k, v in defaults.items():
+                c.execute('INSERT INTO settings (key, value) VALUES (%s, %s) ON CONFLICT (key) DO NOTHING', (k, v))
+        else:
+            c.execute('''
+                CREATE TABLE IF NOT EXISTS settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT
+                )
+            ''')
+            c.execute('''
+                CREATE TABLE IF NOT EXISTS leads (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    created_at TEXT,
+                    child_name TEXT,
+                    child_age INTEGER,
+                    city TEXT,
+                    parent_name TEXT,
+                    parent_phone TEXT,
+                    parent_email TEXT,
+                    ticket_number TEXT UNIQUE,
+                    result_profile TEXT
+                )
+            ''')
+            c.execute('''
+                CREATE TABLE IF NOT EXISTS files (
+                    file_type TEXT PRIMARY KEY,
+                    filename TEXT,
+                    original_name TEXT,
+                    uploaded_at TEXT
+                )
+            ''')
+            c.execute("DELETE FROM settings WHERE key = 'youtube_url' AND value = 'https://youtube.com/shorts/2Uz2AQn4Z-U?feature=share'")
+            defaults = {
+                'branch_name': 'Cloud east',
+                'phone': '+380 96 23 11 331',
+                'email': 'cloud_east@itstep.org',
+                'address': 'UKRAINE',
+                'telegram': '@StepCloudEast'
+            }
+            for k, v in defaults.items():
+                c.execute('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', (k, v))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print("Error initializing DB:", e)
 
     purge_deleted_leads_from_db()
 
@@ -326,9 +381,9 @@ def get_settings():
             print("Error reading settings.json:", e)
 
     try:
-        conn = sqlite3.connect(DB_FILE)
+        conn = get_db_conn()
         c = conn.cursor()
-        c.execute('SELECT key, value FROM settings WHERE value IS NOT NULL AND value != ""')
+        c.execute("SELECT key, value FROM settings WHERE value IS NOT NULL AND value != ''")
         rows = c.fetchall()
         conn.close()
         for k, v in rows:
@@ -346,18 +401,26 @@ def get_settings():
     return settings
 
 def update_settings(data):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    for k, v in data.items():
-        c.execute('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', (k, str(v)))
-    conn.commit()
-    conn.close()
+    try:
+        conn = get_db_conn()
+        c = conn.cursor()
+        for k, v in data.items():
+            if IS_POSTGRES:
+                c.execute('INSERT INTO settings (key, value) VALUES (%s, %s) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value', (k, str(v)))
+            else:
+                c.execute('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', (k, str(v)))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print("Error updating settings DB:", e)
 
     try:
         current = get_settings()
         current.update(data)
         with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
             json.dump(current, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print("Error writing settings.json:", e)
     except Exception as e:
         print("Error writing settings.json:", e)
 
@@ -417,7 +480,7 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
             if auth_header != f'Bearer {ADMIN_PASSWORD}' and query.get('pwd', [''])[0] != ADMIN_PASSWORD:
                 self._send_error('Unauthorized', 401)
                 return
-            conn = sqlite3.connect(DB_FILE)
+            conn = get_db_conn()
             c = conn.cursor()
             c.execute('SELECT id, created_at, child_name, child_age, city, parent_name, parent_phone, parent_email, ticket_number, result_profile FROM leads ORDER BY id DESC')
             rows = c.fetchall()
@@ -442,7 +505,7 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
             if pwd != ADMIN_PASSWORD:
                 self.send_error(401, 'Unauthorized')
                 return
-            conn = sqlite3.connect(DB_FILE)
+            conn = get_db_conn()
             c = conn.cursor()
             c.execute('SELECT id, created_at, child_name, child_age, city, parent_name, parent_phone, parent_email, ticket_number, result_profile FROM leads ORDER BY id DESC')
             rows = c.fetchall()
@@ -465,9 +528,12 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
 
         if path == '/api/files/download':
             file_type = query.get('type', [''])[0]
-            conn = sqlite3.connect(DB_FILE)
+            conn = get_db_conn()
             c = conn.cursor()
-            c.execute('SELECT filename, original_name FROM files WHERE file_type = ?', (file_type,))
+            if IS_POSTGRES:
+                c.execute('SELECT filename, original_name FROM files WHERE file_type = %s', (file_type,))
+            else:
+                c.execute('SELECT filename, original_name FROM files WHERE file_type = ?', (file_type,))
             row = c.fetchone()
             conn.close()
             if row:
@@ -485,7 +551,7 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
             return
 
         if path == '/api/admin/files':
-            conn = sqlite3.connect(DB_FILE)
+            conn = get_db_conn()
             c = conn.cursor()
             c.execute('SELECT file_type, filename, original_name, uploaded_at FROM files')
             rows = c.fetchall()
@@ -553,15 +619,22 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                     self._send_error('Не вказано ID запису для видалення', 400)
                     return
 
-                conn = sqlite3.connect(DB_FILE)
+                conn = get_db_conn()
                 c = conn.cursor()
-                c.execute('SELECT ticket_number FROM leads WHERE id = ?', (lead_id,))
-                row = c.fetchone()
-                ticket_number = row[0] if row else None
-
-                c.execute('DELETE FROM leads WHERE id = ?', (lead_id,))
-                if ticket_number:
-                    c.execute('DELETE FROM leads WHERE ticket_number = ?', (ticket_number,))
+                if IS_POSTGRES:
+                    c.execute('SELECT ticket_number FROM leads WHERE id = %s', (int(lead_id),))
+                    row = c.fetchone()
+                    ticket_number = row[0] if row else None
+                    c.execute('DELETE FROM leads WHERE id = %s', (int(lead_id),))
+                    if ticket_number:
+                        c.execute('DELETE FROM leads WHERE ticket_number = %s', (ticket_number,))
+                else:
+                    c.execute('SELECT ticket_number FROM leads WHERE id = ?', (lead_id,))
+                    row = c.fetchone()
+                    ticket_number = row[0] if row else None
+                    c.execute('DELETE FROM leads WHERE id = ?', (lead_id,))
+                    if ticket_number:
+                        c.execute('DELETE FROM leads WHERE ticket_number = ?', (ticket_number,))
                 conn.commit()
                 conn.close()
 
@@ -589,14 +662,21 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                 ticket_number = generate_ticket()
                 created_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-                conn = sqlite3.connect(DB_FILE)
+                conn = get_db_conn()
                 c = conn.cursor()
-                c.execute('''
-                    INSERT INTO leads (created_at, child_name, child_age, city, parent_name, parent_phone, parent_email, ticket_number, result_profile)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (created_at, child_name, child_age, city, parent_name, parent_phone, parent_email, ticket_number, 'Очікує проходження квізу'))
+                if IS_POSTGRES:
+                    c.execute('''
+                        INSERT INTO leads (created_at, child_name, child_age, city, parent_name, parent_phone, parent_email, ticket_number, result_profile)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+                    ''', (created_at, child_name, child_age, city, parent_name, parent_phone, parent_email, ticket_number, 'Очікує проходження квізу'))
+                    lead_id = c.fetchone()[0]
+                else:
+                    c.execute('''
+                        INSERT INTO leads (created_at, child_name, child_age, city, parent_name, parent_phone, parent_email, ticket_number, result_profile)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (created_at, child_name, child_age, city, parent_name, parent_phone, parent_email, ticket_number, 'Очікує проходження квізу'))
+                    lead_id = c.lastrowid
                 conn.commit()
-                lead_id = c.lastrowid
                 conn.close()
 
                 self._send_json({
@@ -741,9 +821,12 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                 result_profile = data.get('result_profile', '').strip()
 
                 if lead_id and result_profile:
-                    conn = sqlite3.connect(DB_FILE)
+                    conn = get_db_conn()
                     c = conn.cursor()
-                    c.execute('UPDATE leads SET result_profile = ? WHERE id = ?', (result_profile, lead_id))
+                    if IS_POSTGRES:
+                        c.execute('UPDATE leads SET result_profile = %s WHERE id = %s', (result_profile, int(lead_id)))
+                    else:
+                        c.execute('UPDATE leads SET result_profile = ? WHERE id = ?', (result_profile, lead_id))
                     conn.commit()
                     conn.close()
                 self._send_json({'success': True})
@@ -784,11 +867,20 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                 with open(filepath, 'wb') as f:
                     f.write(file_data)
 
-                conn = sqlite3.connect(DB_FILE)
+                conn = get_db_conn()
                 c = conn.cursor()
                 uploaded_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                c.execute('INSERT OR REPLACE INTO files (file_type, filename, original_name, uploaded_at) VALUES (?, ?, ?, ?)',
-                          (file_type, filename, original_filename, uploaded_at))
+                if IS_POSTGRES:
+                    c.execute('''
+                        INSERT INTO files (file_type, filename, original_name, uploaded_at)
+                        VALUES (%s, %s, %s, %s)
+                        ON CONFLICT (file_type) DO UPDATE SET filename = EXCLUDED.filename, original_name = EXCLUDED.original_name, uploaded_at = EXCLUDED.uploaded_at
+                    ''', (file_type, filename, original_filename, uploaded_at))
+                else:
+                    c.execute('''
+                        INSERT OR REPLACE INTO files (file_type, filename, original_name, uploaded_at)
+                        VALUES (?, ?, ?, ?)
+                    ''', (file_type, filename, original_filename, uploaded_at))
                 conn.commit()
                 conn.close()
 
