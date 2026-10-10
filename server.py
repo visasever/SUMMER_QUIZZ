@@ -848,53 +848,83 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                 self._send_error('Unauthorized', 401)
                 return
 
-            content_type = self.headers.get('Content-Type', '')
-            if 'multipart/form-data' not in content_type:
-                self._send_error('Invalid content type', 400)
-                return
+            try:
+                content_type = self.headers.get('Content-Type', '')
+                if 'multipart/form-data' not in content_type:
+                    self._send_error('Invalid content type', 400)
+                    return
 
-            boundary = content_type.split('boundary=')[1].encode()
-            parts = body.split(b'--' + boundary)
-            
-            file_type = None
-            file_data = None
-            original_filename = "file.pdf"
+                boundary = None
+                for param in content_type.split(';'):
+                    param = param.strip()
+                    if param.startswith('boundary='):
+                        boundary = param.split('=', 1)[1].strip('"\' ').encode('utf-8')
+                        break
 
-            for part in parts:
-                if b'name="file_type"' in part:
-                    file_type = part.split(b'\r\n\r\n')[1].split(b'\r\n')[0].decode('utf-8').strip()
-                elif b'name="file"' in part:
-                    headers_part = part.split(b'\r\n\r\n')[0].decode('utf-8', errors='ignore')
-                    if 'filename="' in headers_part:
-                        original_filename = headers_part.split('filename="')[1].split('"')[0]
-                    file_data = part.split(b'\r\n\r\n')[1].rstrip(b'\r\n--')
+                if not boundary:
+                    self._send_error('No boundary found in Content-Type', 400)
+                    return
 
-            if file_type and file_data:
-                filename = f"{file_type}_{int(datetime.now().timestamp())}.pdf"
-                filepath = os.path.join(UPLOADS_DIR, filename)
-                with open(filepath, 'wb') as f:
-                    f.write(file_data)
+                parts = body.split(b'--' + boundary)
+                
+                file_type = None
+                file_data = None
+                original_filename = "file.pdf"
 
-                conn = get_db_conn()
-                c = conn.cursor()
-                uploaded_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                if IS_POSTGRES:
-                    c.execute('''
-                        INSERT INTO files (file_type, filename, original_name, uploaded_at)
-                        VALUES (%s, %s, %s, %s)
-                        ON CONFLICT (file_type) DO UPDATE SET filename = EXCLUDED.filename, original_name = EXCLUDED.original_name, uploaded_at = EXCLUDED.uploaded_at
-                    ''', (file_type, filename, original_filename, uploaded_at))
+                for part in parts:
+                    if not part or part == b'--\r\n' or part == b'--\n' or part == b'--':
+                        continue
+
+                    if b'\r\n\r\n' in part:
+                        headers_bytes, body_bytes = part.split(b'\r\n\r\n', 1)
+                    elif b'\n\n' in part:
+                        headers_bytes, body_bytes = part.split(b'\n\n', 1)
+                    else:
+                        continue
+
+                    if body_bytes.endswith(b'\r\n'):
+                        body_bytes = body_bytes[:-2]
+                    elif body_bytes.endswith(b'\n'):
+                        body_bytes = body_bytes[:-1]
+
+                    headers_str = headers_bytes.decode('utf-8', errors='ignore')
+
+                    if 'name="file_type"' in headers_str:
+                        file_type = body_bytes.decode('utf-8', errors='ignore').strip()
+                    elif 'name="file"' in headers_str:
+                        if 'filename="' in headers_str:
+                            original_filename = headers_str.split('filename="')[1].split('"')[0]
+                        file_data = body_bytes
+
+                if file_type and file_data:
+                    filename = f"{file_type}_{int(datetime.now().timestamp())}.pdf"
+                    filepath = os.path.join(UPLOADS_DIR, filename)
+                    with open(filepath, 'wb') as f:
+                        f.write(file_data)
+
+                    conn = get_db_conn()
+                    c = conn.cursor()
+                    uploaded_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    if IS_POSTGRES:
+                        c.execute('''
+                            INSERT INTO files (file_type, filename, original_name, uploaded_at)
+                            VALUES (%s, %s, %s, %s)
+                            ON CONFLICT (file_type) DO UPDATE SET filename = EXCLUDED.filename, original_name = EXCLUDED.original_name, uploaded_at = EXCLUDED.uploaded_at
+                        ''', (file_type, filename, original_filename, uploaded_at))
+                    else:
+                        c.execute('''
+                            INSERT OR REPLACE INTO files (file_type, filename, original_name, uploaded_at)
+                            VALUES (?, ?, ?, ?)
+                        ''', (file_type, filename, original_filename, uploaded_at))
+                    conn.commit()
+                    conn.close()
+
+                    self._send_json({'success': True, 'filename': filename, 'original_name': original_filename})
                 else:
-                    c.execute('''
-                        INSERT OR REPLACE INTO files (file_type, filename, original_name, uploaded_at)
-                        VALUES (?, ?, ?, ?)
-                    ''', (file_type, filename, original_filename, uploaded_at))
-                conn.commit()
-                conn.close()
-
-                self._send_json({'success': True, 'filename': filename, 'original_name': original_filename})
-            else:
-                self._send_error('Помилка завантаження файла', 400)
+                    self._send_error('Не вдалося розпізнати завантажений файл або його тип', 400)
+            except Exception as e:
+                print("Upload error:", e)
+                self._send_error(f"Помилка завантаження файла: {str(e)}", 500)
             return
 
     def do_DELETE(self):
