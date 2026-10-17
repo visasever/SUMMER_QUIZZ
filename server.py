@@ -25,24 +25,53 @@ DELETED_LEADS_FILE = os.path.join(os.path.dirname(__file__), 'deleted_leads.json
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 
-HAS_PSYCOPG2 = False
-if DATABASE_URL:
-    try:
-        import psycopg2
-        HAS_PSYCOPG2 = True
-    except ImportError:
-        HAS_PSYCOPG2 = False
-        print("WARNING: DATABASE_URL is set, but psycopg2 is not installed. Falling back to SQLite.")
-
-IS_POSTGRES = bool(DATABASE_URL and HAS_PSYCOPG2)
+# Якщо DATABASE_URL вказано — використовується ВИКЛЮЧНО PostgreSQL
+IS_POSTGRES = bool(DATABASE_URL)
 
 def get_db_conn():
     if IS_POSTGRES:
-        import psycopg2
-        pg_url = DATABASE_URL
-        if pg_url.startswith("postgres://"):
-            pg_url = pg_url.replace("postgres://", "postgresql://", 1)
-        return psycopg2.connect(pg_url)
+        # 1. Спроба підключитися через стандартний psycopg2
+        try:
+            import psycopg2
+            pg_url = DATABASE_URL
+            if pg_url.startswith("postgres://"):
+                pg_url = pg_url.replace("postgres://", "postgresql://", 1)
+            return psycopg2.connect(pg_url)
+        except ImportError:
+            pass
+        except Exception as pe:
+            print(f"[DB] psycopg2 connection error: {pe}, switching to pg8000...")
+
+        # 2. Підключення через вбудований (vendored) pure-python pg8000
+        try:
+            vendored_dir = os.path.join(os.path.dirname(__file__), 'vendored')
+            if vendored_dir not in sys.path:
+                sys.path.insert(0, vendored_dir)
+            import pg8000.dbapi
+            import ssl
+
+            parsed = urllib.parse.urlparse(DATABASE_URL)
+            ssl_ctx = ssl.create_default_context()
+            ssl_ctx.check_hostname = False
+            ssl_ctx.verify_mode = ssl.CERT_NONE
+
+            user = urllib.parse.unquote(parsed.username) if parsed.username else None
+            password = urllib.parse.unquote(parsed.password) if parsed.password else None
+            host = parsed.hostname
+            port = parsed.port or 5432
+            database = parsed.path.lstrip('/')
+
+            return pg8000.dbapi.connect(
+                user=user,
+                password=password,
+                host=host,
+                port=port,
+                database=database,
+                ssl_context=ssl_ctx
+            )
+        except Exception as e:
+            print(f"[DB CRITICAL ERROR] Ne vdalosya pidklyuchytysya do PostgreSQL: {e}")
+            raise RuntimeError(f"Database connection error: {e}")
     else:
         return sqlite3.connect(DB_FILE)
 
@@ -281,6 +310,11 @@ def purge_deleted_leads_from_db(records=None):
         print("Error purging deleted leads from DB:", e)
 
 def init_db():
+    if IS_POSTGRES:
+        print("[DB] Pidklyuchennya do PostgreSQL (DATABASE_URL znajdeno)...")
+    else:
+        print("[DB] Lokalny rezhim: vykorystannya SQLite (db.sqlite3)...")
+
     try:
         conn = get_db_conn()
         c = conn.cursor()
@@ -289,7 +323,9 @@ def init_db():
                 CREATE TABLE IF NOT EXISTS settings (
                     key VARCHAR(255) PRIMARY KEY,
                     value TEXT
-                );
+                )
+            ''')
+            c.execute('''
                 CREATE TABLE IF NOT EXISTS leads (
                     id SERIAL PRIMARY KEY,
                     created_at TEXT,
@@ -301,13 +337,15 @@ def init_db():
                     parent_email TEXT,
                     ticket_number VARCHAR(255) UNIQUE,
                     result_profile TEXT
-                );
+                )
+            ''')
+            c.execute('''
                 CREATE TABLE IF NOT EXISTS files (
                     file_type VARCHAR(255) PRIMARY KEY,
                     filename TEXT,
                     original_name TEXT,
                     uploaded_at TEXT
-                );
+                )
             ''')
             c.execute("DELETE FROM settings WHERE key = 'youtube_url' AND value = 'https://youtube.com/shorts/2Uz2AQn4Z-U?feature=share'")
             defaults = {
@@ -319,6 +357,9 @@ def init_db():
             }
             for k, v in defaults.items():
                 c.execute('INSERT INTO settings (key, value) VALUES (%s, %s) ON CONFLICT (key) DO NOTHING', (k, v))
+            conn.commit()
+            conn.close()
+            print("[DB] [OK] PostgreSQL uspishno inicializovano! Vsi tablytsi hotovi.")
         else:
             c.execute('''
                 CREATE TABLE IF NOT EXISTS settings (
@@ -358,10 +399,13 @@ def init_db():
             }
             for k, v in defaults.items():
                 c.execute('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', (k, v))
-        conn.commit()
-        conn.close()
+            conn.commit()
+            conn.close()
+            print("[DB] [OK] SQLite uspishno inicializovano!")
     except Exception as e:
-        print("Error initializing DB:", e)
+        print("[DB ERROR] Pomylka inicializacii bazy danykh:", e)
+        if IS_POSTGRES:
+            raise e
 
     purge_deleted_leads_from_db()
 
