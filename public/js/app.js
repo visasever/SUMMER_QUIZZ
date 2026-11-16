@@ -4,7 +4,7 @@ let userAnswers = [];
 let registrationData = null;
 let currentBranchSettings = {
   branch_name: 'Cloud east',
-  youtube_url: 'https://youtube.com/shorts/2Uz2AQn4Z-U?feature=share',
+  youtube_url: '',
   phone: '+380 96 23 11 331',
   email: 'cloud_east@itstep.org',
   address: 'UKRAINE',
@@ -19,14 +19,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadBranchSettings() {
   try {
+    localStorage.removeItem('youtube_url');
     const res = await fetch('/api/settings');
     if (res.ok) {
       const data = await res.json();
-      if (!data.youtube_url && localStorage.getItem('youtube_url')) {
-        data.youtube_url = localStorage.getItem('youtube_url');
-      } else if (data.youtube_url) {
-        localStorage.setItem('youtube_url', data.youtube_url);
-      }
       currentBranchSettings = data;
       renderBranchInfo();
     } else {
