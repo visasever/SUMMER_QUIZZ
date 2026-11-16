@@ -581,7 +581,7 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
         self._send_bytes(content, content_type=content_type, filename=filename)
 
     def _parse_path_and_query(self):
-        raw_uri = self.headers.get('x-forwarded-uri') or self.headers.get('x-original-uri') or self.headers.get('x-real-url') or self.path
+        raw_uri = self.headers.get('x-forwarded-uri') or self.headers.get('x-original-uri') or self.headers.get('x-real-url') or self.path or '/'
         parsed = urllib.parse.urlparse(raw_uri)
         path = parsed.path
         query = urllib.parse.parse_qs(parsed.query)
@@ -596,6 +596,10 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
             route_val = query.get('_route', [''])[0]
             if route_val:
                 path = '/api/' + route_val.lstrip('/')
+
+        path = path.rstrip('/')
+        if not path:
+            path = '/'
 
         return path, query
 
@@ -1077,11 +1081,10 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                 self._send_error(f"Помилка завантаження файла: {str(e)}", 500)
             return
 
+        self._send_error(f"Endpoint not found: {path}", 404)
+
     def do_DELETE(self):
         self.do_POST()
-
-handler = QuizRequestHandler
-app = QuizRequestHandler
 
 def run(port=8080):
     port = int(os.environ.get('PORT', port))
