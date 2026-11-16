@@ -31,6 +31,25 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "zVjp5vlB3ojS0uT")
 
 DELETED_LEADS_FILE = os.path.join(ROOT_DIR, 'deleted_leads.json')
 
+def load_dotenv():
+    for env_name in ('.env.local', '.env'):
+        env_path = os.path.join(ROOT_DIR, env_name)
+        if os.path.exists(env_path):
+            try:
+                with open(env_path, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith('#') and '=' in line:
+                            k, v = line.split('=', 1)
+                            k = k.strip()
+                            v = v.strip().strip('"\'')
+                            if k not in os.environ:
+                                os.environ[k] = v
+            except Exception:
+                pass
+
+load_dotenv()
+
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 
 # Якщо DATABASE_URL вказано — використовується ВИКЛЮЧНО PostgreSQL
