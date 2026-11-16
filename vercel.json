@@ -1,0 +1,11 @@
+{
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index.py?_route=$1" },
+    { "source": "/", "destination": "/public/index.html" },
+    { "source": "/admin", "destination": "/public/admin.html" },
+    { "source": "/admin.html", "destination": "/public/admin.html" },
+    { "source": "/login", "destination": "/public/login.html" },
+    { "source": "/login.html", "destination": "/public/login.html" },
+    { "source": "/(.*)", "destination": "/public/$1" }
+  ]
+}

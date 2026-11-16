@@ -12,16 +12,24 @@ import string
 import csv
 import io
 
-DB_FILE = os.path.join(os.path.dirname(__file__), 'db.sqlite3')
-UPLOADS_DIR = os.path.join(os.path.dirname(__file__), 'uploads')
-PUBLIC_DIR = os.path.join(os.path.dirname(__file__), 'public')
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_FILE = os.path.join(ROOT_DIR, 'db.sqlite3')
+UPLOADS_DIR = os.path.join(ROOT_DIR, 'uploads')
+PUBLIC_DIR = os.path.join(ROOT_DIR, 'public')
 
-os.makedirs(UPLOADS_DIR, exist_ok=True)
-os.makedirs(PUBLIC_DIR, exist_ok=True)
+try:
+    os.makedirs(UPLOADS_DIR, exist_ok=True)
+except Exception:
+    pass
+
+try:
+    os.makedirs(PUBLIC_DIR, exist_ok=True)
+except Exception:
+    pass
 
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "zVjp5vlB3ojS0uT")
 
-DELETED_LEADS_FILE = os.path.join(os.path.dirname(__file__), 'deleted_leads.json')
+DELETED_LEADS_FILE = os.path.join(ROOT_DIR, 'deleted_leads.json')
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 
@@ -44,7 +52,7 @@ def get_db_conn():
 
         # 2. Підключення через вбудований (vendored) pure-python pg8000
         try:
-            vendored_dir = os.path.join(os.path.dirname(__file__), 'vendored')
+            vendored_dir = os.path.join(ROOT_DIR, 'vendored')
             if vendored_dir not in sys.path:
                 sys.path.insert(0, vendored_dir)
             import pg8000.dbapi
@@ -218,23 +226,26 @@ def get_guide_pdf_base64():
         conn = get_db_conn()
         c = conn.cursor()
         if IS_POSTGRES:
-            c.execute('SELECT filename FROM files WHERE file_type = %s', ('parent_guide',))
+            c.execute('SELECT file_data, filename FROM files WHERE file_type = %s', ('parent_guide',))
         else:
-            c.execute('SELECT filename FROM files WHERE file_type = ?', ('parent_guide',))
+            c.execute('SELECT file_data, filename FROM files WHERE file_type = ?', ('parent_guide',))
         row = c.fetchone()
         conn.close()
-        if row and row[0]:
-            uploaded_path = os.path.join(UPLOADS_DIR, row[0])
-            if os.path.exists(uploaded_path):
-                with open(uploaded_path, 'rb') as f:
-                    return base64.b64encode(f.read()).decode('utf-8')
+        if row:
+            if row[0]:
+                return row[0]
+            if row[1]:
+                uploaded_path = os.path.join(UPLOADS_DIR, row[1])
+                if os.path.exists(uploaded_path):
+                    with open(uploaded_path, 'rb') as f:
+                        return base64.b64encode(f.read()).decode('utf-8')
     except Exception as e:
         print("Error checking files DB for guide:", e)
 
     # 2. Check fallback file locations
     possible_paths = [
-        os.path.join(UPLOADS_DIR, 'parent_guide.pdf'),
-        os.path.join(PUBLIC_DIR, 'assets', 'default_guide.pdf')
+        os.path.join(PUBLIC_DIR, 'assets', 'default_guide.pdf'),
+        os.path.join(UPLOADS_DIR, 'parent_guide.pdf')
     ]
     for p in possible_paths:
         if os.path.exists(p):
@@ -344,9 +355,14 @@ def init_db():
                     file_type VARCHAR(255) PRIMARY KEY,
                     filename TEXT,
                     original_name TEXT,
-                    uploaded_at TEXT
+                    uploaded_at TEXT,
+                    file_data TEXT
                 )
             ''')
+            try:
+                c.execute('ALTER TABLE files ADD COLUMN IF NOT EXISTS file_data TEXT')
+            except Exception:
+                pass
             c.execute("DELETE FROM settings WHERE key = 'youtube_url' AND value = 'https://youtube.com/shorts/2Uz2AQn4Z-U?feature=share'")
             defaults = {
                 'branch_name': 'Cloud east',
@@ -386,9 +402,14 @@ def init_db():
                     file_type TEXT PRIMARY KEY,
                     filename TEXT,
                     original_name TEXT,
-                    uploaded_at TEXT
+                    uploaded_at TEXT,
+                    file_data TEXT
                 )
             ''')
+            try:
+                c.execute('ALTER TABLE files ADD COLUMN file_data TEXT')
+            except Exception:
+                pass
             c.execute("DELETE FROM settings WHERE key = 'youtube_url' AND value = 'https://youtube.com/shorts/2Uz2AQn4Z-U?feature=share'")
             defaults = {
                 'branch_name': 'Cloud east',
@@ -411,7 +432,7 @@ def init_db():
 
 init_db()
 
-SETTINGS_FILE = os.path.join(os.path.dirname(__file__), 'settings.json')
+SETTINGS_FILE = os.path.join(ROOT_DIR, 'settings.json')
 
 DEFAULT_SETTINGS = {
     'branch_name': 'Cloud east',
@@ -505,6 +526,17 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
     def _send_error(self, message, status=400):
         self._send_json({'error': message}, status=status)
 
+    def _send_bytes(self, content_bytes, content_type='application/octet-stream', filename=None):
+        self.send_response(200)
+        self.send_header('Content-Type', content_type)
+        self.send_header('Content-Length', str(len(content_bytes)))
+        self.send_header('Access-Control-Allow-Origin', '*')
+        if filename:
+            encoded_fn = urllib.parse.quote(filename)
+            self.send_header('Content-Disposition', f'attachment; filename="{encoded_fn}"; filename*=UTF-8\'\'{encoded_fn}')
+        self.end_headers()
+        self.wfile.write(content_bytes)
+
     def _send_file(self, filepath, content_type=None, filename=None):
         if not os.path.exists(filepath):
             self.send_error(404, "File not found")
@@ -514,26 +546,36 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
             content_type = content_type or 'application/octet-stream'
         with open(filepath, 'rb') as f:
             content = f.read()
-        self.send_response(200)
-        self.send_header('Content-Type', content_type)
-        self.send_header('Content-Length', str(len(content)))
-        if filename:
-            encoded_fn = urllib.parse.quote(filename)
-            self.send_header('Content-Disposition', f'attachment; filename="{encoded_fn}"; filename*=UTF-8\'\'{encoded_fn}')
-        self.end_headers()
-        self.wfile.write(content)
+        self._send_bytes(content, content_type=content_type, filename=filename)
+
+    def _parse_path_and_query(self):
+        raw_uri = self.headers.get('x-forwarded-uri') or self.headers.get('x-original-uri') or self.headers.get('x-real-url') or self.path
+        parsed = urllib.parse.urlparse(raw_uri)
+        path = parsed.path
+        query = urllib.parse.parse_qs(parsed.query)
+
+        if self.path:
+            self_parsed = urllib.parse.urlparse(self.path)
+            for k, v in urllib.parse.parse_qs(self_parsed.query).items():
+                if k not in query:
+                    query[k] = v
+
+        if '_route' in query:
+            route_val = query.get('_route', [''])[0]
+            if route_val:
+                path = '/api/' + route_val.lstrip('/')
+
+        return path, query
 
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
         self.end_headers()
 
     def do_GET(self):
-        parsed_url = urllib.parse.urlparse(self.path)
-        path = parsed_url.path
-        query = urllib.parse.parse_qs(parsed_url.query)
+        path, query = self._parse_path_and_query()
 
         if path == '/api/settings':
             self._send_json(get_settings())
@@ -595,16 +637,27 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
             conn = get_db_conn()
             c = conn.cursor()
             if IS_POSTGRES:
-                c.execute('SELECT filename, original_name FROM files WHERE file_type = %s', (file_type,))
+                c.execute('SELECT filename, original_name, file_data FROM files WHERE file_type = %s', (file_type,))
             else:
-                c.execute('SELECT filename, original_name FROM files WHERE file_type = ?', (file_type,))
+                c.execute('SELECT filename, original_name, file_data FROM files WHERE file_type = ?', (file_type,))
             row = c.fetchone()
             conn.close()
             if row:
-                filepath = os.path.join(UPLOADS_DIR, row[0])
-                if os.path.exists(filepath):
-                    self._send_file(filepath, filename=row[1])
-                    return
+                filename = row[1] or 'file.pdf'
+                file_b64 = row[2]
+                if file_b64:
+                    try:
+                        import base64
+                        raw_bytes = base64.b64decode(file_b64)
+                        self._send_bytes(raw_bytes, content_type='application/pdf', filename=filename)
+                        return
+                    except Exception as e:
+                        print("Error decoding file_data from DB:", e)
+                if row[0]:
+                    filepath = os.path.join(UPLOADS_DIR, row[0])
+                    if os.path.exists(filepath):
+                        self._send_file(filepath, filename=filename)
+                        return
             
             if file_type == 'parent_guide':
                 filepath = os.path.join(PUBLIC_DIR, 'assets', 'default_guide.pdf')
@@ -634,8 +687,7 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
             self.send_error(404, "Page Not Found")
 
     def do_POST(self):
-        parsed_url = urllib.parse.urlparse(self.path)
-        path = parsed_url.path
+        path, query = self._parse_path_and_query()
 
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length) if content_length > 0 else b''
@@ -954,24 +1006,32 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
 
                 if file_type and file_data:
                     filename = f"{file_type}_{int(datetime.now().timestamp())}.pdf"
-                    filepath = os.path.join(UPLOADS_DIR, filename)
-                    with open(filepath, 'wb') as f:
-                        f.write(file_data)
+                    file_b64 = base64.b64encode(file_data).decode('utf-8')
+                    try:
+                        filepath = os.path.join(UPLOADS_DIR, filename)
+                        with open(filepath, 'wb') as f:
+                            f.write(file_data)
+                    except Exception:
+                        pass
 
                     conn = get_db_conn()
                     c = conn.cursor()
                     uploaded_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                     if IS_POSTGRES:
                         c.execute('''
-                            INSERT INTO files (file_type, filename, original_name, uploaded_at)
-                            VALUES (%s, %s, %s, %s)
-                            ON CONFLICT (file_type) DO UPDATE SET filename = EXCLUDED.filename, original_name = EXCLUDED.original_name, uploaded_at = EXCLUDED.uploaded_at
-                        ''', (file_type, filename, original_filename, uploaded_at))
+                            INSERT INTO files (file_type, filename, original_name, uploaded_at, file_data)
+                            VALUES (%s, %s, %s, %s, %s)
+                            ON CONFLICT (file_type) DO UPDATE SET 
+                                filename = EXCLUDED.filename, 
+                                original_name = EXCLUDED.original_name, 
+                                uploaded_at = EXCLUDED.uploaded_at,
+                                file_data = EXCLUDED.file_data
+                        ''', (file_type, filename, original_filename, uploaded_at, file_b64))
                     else:
                         c.execute('''
-                            INSERT OR REPLACE INTO files (file_type, filename, original_name, uploaded_at)
-                            VALUES (?, ?, ?, ?)
-                        ''', (file_type, filename, original_filename, uploaded_at))
+                            INSERT OR REPLACE INTO files (file_type, filename, original_name, uploaded_at, file_data)
+                            VALUES (?, ?, ?, ?, ?)
+                        ''', (file_type, filename, original_filename, uploaded_at, file_b64))
                     conn.commit()
                     conn.close()
 
