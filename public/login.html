@@ -49,16 +49,21 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ password: pwd })
         });
-        const data = await res.json();
+        let data = {};
+        try {
+          data = await res.json();
+        } catch (jsonErr) {
+          throw new Error(`Помилка сервера (${res.status} ${res.statusText || 'Error'})`);
+        }
         if (res.ok && data.success) {
           localStorage.setItem('admin_token', data.token);
           window.location.href = '/admin.html';
         } else {
-          errorEl.textContent = data.error || 'Невірний пароль';
+          errorEl.textContent = data.error || 'Невірний пароль адміністратора';
           errorEl.style.display = 'block';
         }
       } catch (err) {
-        errorEl.textContent = 'Помилка з\'єднання із сервером';
+        errorEl.textContent = err.message || 'Помилка з\'єднання із сервером';
         errorEl.style.display = 'block';
       }
     });

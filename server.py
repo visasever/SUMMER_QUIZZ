@@ -13,23 +13,6 @@ import csv
 import io
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_FILE = os.path.join(ROOT_DIR, 'db.sqlite3')
-UPLOADS_DIR = os.path.join(ROOT_DIR, 'uploads')
-PUBLIC_DIR = os.path.join(ROOT_DIR, 'public')
-
-try:
-    os.makedirs(UPLOADS_DIR, exist_ok=True)
-except Exception:
-    pass
-
-try:
-    os.makedirs(PUBLIC_DIR, exist_ok=True)
-except Exception:
-    pass
-
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "zVjp5vlB3ojS0uT")
-
-DELETED_LEADS_FILE = os.path.join(ROOT_DIR, 'deleted_leads.json')
 
 def load_dotenv():
     for env_name in ('.env.local', '.env'):
@@ -49,6 +32,37 @@ def load_dotenv():
                 pass
 
 load_dotenv()
+
+def get_admin_password():
+    return (os.environ.get("ADMIN_PASSWORD") or os.environ.get("ADMIN_PASS") or "zVjp5vlB3ojS0uT").strip()
+
+ADMIN_PASSWORD = get_admin_password()
+
+def get_sqlite_path():
+    try:
+        test_file = os.path.join(ROOT_DIR, '.write_test')
+        with open(test_file, 'w') as f:
+            f.write('')
+        os.remove(test_file)
+        return os.path.join(ROOT_DIR, 'db.sqlite3')
+    except Exception:
+        return os.path.join('/tmp', 'db.sqlite3')
+
+DB_FILE = get_sqlite_path()
+UPLOADS_DIR = os.path.join(ROOT_DIR, 'uploads')
+PUBLIC_DIR = os.path.join(ROOT_DIR, 'public')
+
+try:
+    os.makedirs(UPLOADS_DIR, exist_ok=True)
+except Exception:
+    pass
+
+try:
+    os.makedirs(PUBLIC_DIR, exist_ok=True)
+except Exception:
+    pass
+
+DELETED_LEADS_FILE = os.path.join(ROOT_DIR, 'deleted_leads.json')
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 
@@ -444,10 +458,11 @@ def init_db():
             print("[DB] [OK] SQLite uspishno inicializovano!")
     except Exception as e:
         print("[DB ERROR] Pomylka inicializacii bazy danykh:", e)
-        if IS_POSTGRES:
-            raise e
 
-    purge_deleted_leads_from_db()
+    try:
+        purge_deleted_leads_from_db()
+    except Exception:
+        pass
 
 init_db()
 
@@ -601,8 +616,9 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
             return
 
         if path == '/api/admin/leads':
+            admin_pwd = get_admin_password()
             auth_header = self.headers.get('Authorization', '')
-            if auth_header != f'Bearer {ADMIN_PASSWORD}' and query.get('pwd', [''])[0] != ADMIN_PASSWORD:
+            if auth_header != f'Bearer {admin_pwd}' and query.get('pwd', [''])[0] != admin_pwd:
                 self._send_error('Unauthorized', 401)
                 return
             conn = get_db_conn()
@@ -626,8 +642,9 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
             return
 
         if path == '/api/admin/leads/export':
+            admin_pwd = get_admin_password()
             pwd = query.get('pwd', [''])[0]
-            if pwd != ADMIN_PASSWORD:
+            if pwd != admin_pwd:
                 self.send_error(401, 'Unauthorized')
                 return
             conn = get_db_conn()
@@ -714,8 +731,10 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
         if path == '/api/admin/login':
             try:
                 data = json.loads(body.decode('utf-8'))
-                if data.get('password') == ADMIN_PASSWORD:
-                    self._send_json({'success': True, 'token': ADMIN_PASSWORD})
+                input_pwd = str(data.get('password', '')).strip()
+                admin_pwd = get_admin_password()
+                if input_pwd and input_pwd == admin_pwd:
+                    self._send_json({'success': True, 'token': admin_pwd})
                 else:
                     self._send_error('Невірний пароль адміністратора', 401)
             except Exception as e:
@@ -724,7 +743,7 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
 
         if path == '/api/admin/settings':
             auth_header = self.headers.get('Authorization', '')
-            if auth_header != f'Bearer {ADMIN_PASSWORD}':
+            if auth_header != f'Bearer {get_admin_password()}':
                 self._send_error('Unauthorized', 401)
                 return
             try:
@@ -737,7 +756,7 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
 
         if path == '/api/admin/leads/delete' or (path == '/api/admin/leads' and self.command == 'DELETE'):
             auth_header = self.headers.get('Authorization', '')
-            if auth_header != f'Bearer {ADMIN_PASSWORD}':
+            if auth_header != f'Bearer {get_admin_password()}':
                 self._send_error('Unauthorized', 401)
                 return
             try:
@@ -745,10 +764,8 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
                 if body:
                     data = json.loads(body.decode('utf-8'))
                     lead_id = data.get('id')
-                if not lead_id:
-                    query_params = urllib.parse.parse_qs(parsed_url.query)
-                    if 'id' in query_params:
-                        lead_id = query_params['id'][0]
+                if not lead_id and 'id' in query:
+                    lead_id = query['id'][0]
 
                 if not lead_id:
                     self._send_error('Не вказано ID запису для видалення', 400)
@@ -911,7 +928,7 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
 
         if path == '/api/admin/test-email':
             auth_header = self.headers.get('Authorization', '')
-            if auth_header != f'Bearer {ADMIN_PASSWORD}':
+            if auth_header != f'Bearer {get_admin_password()}':
                 self._send_error('Unauthorized', 401)
                 return
             try:
@@ -971,7 +988,7 @@ class QuizRequestHandler(BaseHTTPRequestHandler):
 
         if path == '/api/admin/upload':
             auth_header = self.headers.get('Authorization', '')
-            if auth_header != f'Bearer {ADMIN_PASSWORD}':
+            if auth_header != f'Bearer {get_admin_password()}':
                 self._send_error('Unauthorized', 401)
                 return
 
