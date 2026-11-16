@@ -396,7 +396,6 @@ def init_db():
                 c.execute('ALTER TABLE files ADD COLUMN IF NOT EXISTS file_data TEXT')
             except Exception:
                 pass
-            c.execute("DELETE FROM settings WHERE key = 'youtube_url' AND value = 'https://youtube.com/shorts/2Uz2AQn4Z-U?feature=share'")
             defaults = {
                 'branch_name': 'Cloud east',
                 'phone': '+380 96 23 11 331',
@@ -443,7 +442,6 @@ def init_db():
                 c.execute('ALTER TABLE files ADD COLUMN file_data TEXT')
             except Exception:
                 pass
-            c.execute("DELETE FROM settings WHERE key = 'youtube_url' AND value = 'https://youtube.com/shorts/2Uz2AQn4Z-U?feature=share'")
             defaults = {
                 'branch_name': 'Cloud east',
                 'phone': '+380 96 23 11 331',
@@ -506,10 +504,10 @@ def get_settings():
     except Exception as e:
         print("Error reading settings DB:", e)
 
-    # Якщо посилання на відео відсутнє в адмінпанелі (або дорівнює застарілому дефолтному), воно береться лише зі змінної оточення VIDEO_URL
+    # Якщо посилання на відео відсутнє в адмінпанелі, воно береться зі змінної оточення VIDEO_URL або YOUTUBE_URL
     yt_val = settings.get('youtube_url', '').strip()
-    if not yt_val or yt_val == 'https://youtube.com/shorts/2Uz2AQn4Z-U?feature=share':
-        env_video = (os.environ.get('VIDEO_URL') or os.environ.get('YOUTUBE_URL') or '').strip()
+    if not yt_val:
+        env_video = (os.environ.get('VIDEO_URL') or os.environ.get('YOUTUBE_URL') or os.environ.get('VIDEO') or os.environ.get('YOUTUBE') or os.environ.get('NEXT_PUBLIC_VIDEO_URL') or '').strip()
         settings['youtube_url'] = env_video
 
     # BREVO_API_KEY: беремо переважно зі змінної оточення BREVO_API_KEY або EMAIL_API_KEY

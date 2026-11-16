@@ -224,24 +224,38 @@ body {
   justify-content: center;
   position: relative;
   box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.video-box:hover {
+  border-color: rgba(0, 242, 254, 0.4);
 }
 
 .video-box iframe, .video-box video {
   width: 100%;
   height: 100%;
   border: none;
+  cursor: default;
 }
 
 .video-placeholder {
   text-align: center;
   padding: 20px;
   color: var(--text-muted);
+  user-select: none;
 }
 
 .play-icon {
   font-size: 3rem;
   color: var(--accent-cyan);
   margin-bottom: 12px;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.video-box:hover .play-icon {
+  transform: scale(1.15);
+  color: #26f5ff;
 }
 
 /* Form Controls */

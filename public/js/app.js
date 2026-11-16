@@ -34,7 +34,7 @@ async function loadBranchSettings() {
   }
 }
 
-function getYouTubeEmbedUrl(url) {
+function getYouTubeEmbedUrl(url, autoplay = false) {
   if (!url) return null;
   url = String(url).trim();
   if (!url) return null;
@@ -48,16 +48,63 @@ function getYouTubeEmbedUrl(url) {
     const regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
     const match = fullUrl.match(regExp);
     if (match && match[1]) {
-      return `https://www.youtube.com/embed/${match[1]}?autoplay=0&rel=0`;
+      return `https://www.youtube.com/embed/${match[1]}?autoplay=${autoplay ? 1 : 0}&rel=0`;
     }
 
     if (/^[a-zA-Z0-9_-]{11}$/.test(url)) {
-      return `https://www.youtube.com/embed/${url}?autoplay=0&rel=0`;
+      return `https://www.youtube.com/embed/${url}?autoplay=${autoplay ? 1 : 0}&rel=0`;
     }
   } catch (e) {
     console.error("Error parsing YouTube URL:", e);
   }
   return null;
+}
+
+function renderVideoPlayer(url, container, autoplay = false) {
+  if (!container || !url || !url.trim()) return false;
+  url = url.trim();
+
+  const embedUrl = getYouTubeEmbedUrl(url, autoplay);
+  if (embedUrl) {
+    container.innerHTML = `
+      <iframe 
+        width="100%" 
+        height="100%" 
+        src="${embedUrl}" 
+        title="Презентаційне відео ITSTEP" 
+        frameborder="0" 
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+        allowfullscreen>
+      </iframe>
+    `;
+    return true;
+  }
+
+  if (/\.(mp4|webm|ogg|mov)($|\?)/i.test(url)) {
+    container.innerHTML = `
+      <video width="100%" height="100%" controls ${autoplay ? 'autoplay' : ''} playsinline style="width:100%; height:100%; object-fit:cover;">
+        <source src="${url}">
+        Ваш браузер не підтримує відео.
+      </video>
+    `;
+    return true;
+  }
+
+  if (/^https?:\/\//i.test(url)) {
+    container.innerHTML = `
+      <iframe 
+        width="100%" 
+        height="100%" 
+        src="${url}" 
+        title="Презентаційне відео ITSTEP" 
+        frameborder="0" 
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+        allowfullscreen>
+      </iframe>
+    `;
+    return true;
+  }
+  return false;
 }
 
 function renderBranchInfo() {
@@ -92,24 +139,27 @@ function renderBranchInfo() {
   const ytUrl = currentBranchSettings.youtube_url;
   const videoBox = document.querySelector('.video-box');
   if (videoBox && ytUrl) {
-    const embedUrl = getYouTubeEmbedUrl(ytUrl);
-    if (embedUrl) {
-      videoBox.innerHTML = `
-        <iframe 
-          width="100%" 
-          height="100%" 
-          src="${embedUrl}" 
-          title="Презентаційне відео ITSTEP" 
-          frameborder="0" 
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-          allowfullscreen>
-        </iframe>
-      `;
-    }
+    renderVideoPlayer(ytUrl, videoBox, false);
   }
 }
 
 function setupEventListeners() {
+  // Video Box Click Handler
+  const videoBox = document.querySelector('.video-box');
+  if (videoBox) {
+    videoBox.addEventListener('click', () => {
+      if (videoBox.querySelector('iframe') || videoBox.querySelector('video')) {
+        return;
+      }
+      const ytUrl = (currentBranchSettings && currentBranchSettings.youtube_url) ? currentBranchSettings.youtube_url.trim() : '';
+      if (ytUrl) {
+        renderVideoPlayer(ytUrl, videoBox, true);
+      } else {
+        alert("Презентаційне відео наразі не налаштовано.\n\nВкажіть посилання у змінній оточення VIDEO_URL на Vercel або збережіть його в адмінпанелі (/admin.html).");
+      }
+    });
+  }
+
   // Screen 1 -> Screen 2
   const startRegBtn = document.getElementById('start-registration-btn');
   if (startRegBtn) {
